@@ -72,7 +72,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20240623.08'
+VERSION = '20240624.01'
 #USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0'
 TRACKER_ID = 'priimage'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -238,18 +238,26 @@ class ZstdDict(object):
 
 
 class WgetArgs(object):
-    post_chars = string.digits + string.ascii_lowercase
+    #COOKIES = {}
 
-    def int_to_str(self, i):
-        d, m = divmod(i, 36)
-        if d > 0:
-            return self.int_to_str(d) + self.post_chars[m]
-        return self.post_chars[m]
+    #@classmethod
+    #def get_cookies(cls, url, user_agent):
+    #    headers = {'User-Agent': user_agent}
+    #    if user_agent in cls.COOKIES:
+    #        headers['Cookie'] = cls.COOKIES[user_agent]
+    #    response = requests.get(url, headers=headers)
+    #    #if response.status_code == 403:
+    #    #    pass
+    #    # if we get new cookies, always grab the new ones
+    #    cls.COOKIES[user_agent] = '; '.join(['{}={}'.format(k, v) for k, v in response.cookies.items()])
+    #    print(cls.COOKIES[user_agent])
+    #    return cls.COOKIES[user_agent]
 
     def realize(self, item):
+        user_agent = random.choice(USER_AGENTS)
         wget_args = [
             WGET_AT,
-            '-U', random.choice(USER_AGENTS),
+            '-U', user_agent,
             '-nv',
             #'--no-cookies',
             '--host-lookups', 'dns',
@@ -281,7 +289,7 @@ class WgetArgs(object):
             '--warc-dedup-url-agnostic',
             '--warc-compression-use-zstd',
             '--warc-zstd-dict-no-include',
-            #'--header', 'Cookie: visid_incap_2115109=DfeaIdVkRDqpV2F4/I9zOYEseGYAAAAAQUIPAAAAAACpuIAt02ySLi3U+/qN38p0; incap_ses_1367_2115109=N0dVL2eR3wNiJckuWY/4EoEseGYAAAAAg7JkoPsjmx3M/ZzvIpISnA=='
+            '--secure-protocol', 'PFS'
         ]
         dict_data = ZstdDict.get_dict()
         with open(os.path.join(item['item_dir'], 'zstdict'), 'wb') as f:
@@ -299,6 +307,8 @@ class WgetArgs(object):
             if concurrency is None:
                 concurrency = 2
         item['concurrency'] = str(concurrency)
+
+        added_cookie = False
 
         for item_name in item['item_name'].split('\0'):
             wget_args.extend(['--warc-header', 'x-wget-at-project-item-name: '+item_name])
@@ -333,6 +343,9 @@ class WgetArgs(object):
                 wget_args.append('https://'+item_value)
             else:
                 raise Exception('Unknown item')
+            #if item_type != 'cdn' and not added_cookie:
+            #    wget_args.extend(['--header', 'Cookie: '+self.get_cookies(wget_args[-1], user_agent)])
+            #    added_cookie = True
 
         item['item_name_newline'] = item['item_name'].replace('\0', '\n')
 
